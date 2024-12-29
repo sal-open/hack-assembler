@@ -2,11 +2,17 @@
 #define SYMBOLTABLE_H
 
 typedef struct {
-    char memory_address[16]; // Numerical value as a string
-    char symbol_name[64];    // Symbol name
+    char memory_address[16];    // Numerical value as a string.
+    char symbol_name[64];       // Symbol name.
 } symbol;
 
-// Default symbols
+// Labels found in the .asm.
+symbol labels[16384];
+
+// Variables found in the .asm.
+symbol variables[16384];
+
+// Default symbols.
 symbol default_symbols[23] = {
     {"0", "SP"},  {"1", "LCL"},  {"2", "ARG"},
     {"3", "THIS"}, {"4", "THAT"}, {"0", "R0"},
@@ -18,13 +24,7 @@ symbol default_symbols[23] = {
     {"16384", "SCREEN"}, {"24576", "KBD"}
 };
 
-// Labels found in the .asm
-symbol labels[16384];
-
-// Variables found in the .asm
-symbol variables[16384];
-
-// Computation table (C-instruction "comp" mnemonics)
+// Computation table (C-instruction "comp" mnemonics).
 const symbol comp_table[] = {
     {"0101010", "0"},   {"0111111", "1"},   {"0111010", "-1"},
     {"0001100", "D"},   {"0110000", "A"},   {"1110000", "M"},
@@ -38,14 +38,14 @@ const symbol comp_table[] = {
     {"1010101", "D|M"}
 };
 
-// Jump table (C-instruction "jump" mnemonics)
+// Jump table (C-instruction "jump" mnemonics).
 const symbol jump_table[7] = {
     {"001", "JGT"}, {"010", "JEQ"}, {"011", "JGE"},
     {"100", "JLT"}, {"101", "JNE"}, {"110", "JLE"},
     {"111", "JMP"}
 };
 
-// Destination table (C-instruction "dest" mnemonics)
+// Destination table (C-instruction "dest" mnemonics).
 const symbol dest_table[7] = {
     {"001", "M"},   {"010", "D"},   {"011", "MD"},
     {"100", "A"},   {"101", "AM"},  {"110", "AD"},
