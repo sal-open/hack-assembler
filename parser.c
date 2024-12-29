@@ -11,33 +11,35 @@ void parser(FILE *asmfile, FILE *hackfile, char *hackname) {
     int label_number = 0;
     int variable_number = 0;
 
-    cycle = 0;
     while (fgets(buffer, sizeof(buffer), asmfile) != NULL) {
+        // Clean the current line in 'buffer'.
         remove_comments(buffer);
         remove_spaces(buffer);
         remove_newlines(buffer);
-        cycle++;
-        char *position = strchr(buffer, '@') + 1;
-        if (strchr(buffer, '@') != NULL && (*(position) >= '0' && *(position) <= '9')) {
-            parse_a(hackfile, buffer, position);
+
+        char *at_sign_pos = strchr(buffer, '@'), *at_value_pos = at_sign_pos + 1;
+        // Is it a number?
+        if (at_sign_pos != NULL && (*(at_value_pos) >= '0' && *(at_value_pos) <= '9')) {
+            parse_a(hackfile, buffer, at_sign_pos);
         }
-        else if (strchr(buffer, '@') != NULL && !(*(position) >= '0' && *(position) <= '9')) {
-            int default_symbol = search_default_symbol(position);
-            if (default_symbol >= 0) {
-                strcpy(position, default_symbols[default_symbol].memory_address);
-                parse_a(hackfile, buffer, position);
+        // If not, Is it a default symbol?
+        else if (at_sign_pos != NULL && !(*(at_value_pos) >= '0' && *(at_value_pos) <= '9')) {
+            int symbol_index = search_default_symbol(at_value_pos);
+            // If it is a default symbol, parse it, else it must be a label or a
+            // variable, so leave it there for later.
+            if (symbol_index >= 0) {
+                strcpy(at_value_pos, default_symbols[symbol_index].memory_address);
+                parse_a(hackfile, buffer, at_sign_pos);
             }
             else fprintf(hackfile, "%s\n", buffer);
         }
+        // At this point it must be a C-instruction.
         else parse_c(hackfile, buffer);
     }
 
-    cycle = 0;
-    memset(buffer, '\0', sizeof(buffer));
-
     fclose(hackfile);
-    hackfile = fopen(hackname, "r+");
-    FILE *tempfile = fopen("temp.hack", "w+");
+    hackfile = fopen(hackname, "r+");               // To maintain what we already parsed.
+    FILE *clean_file = fopen("temp.hack", "w+");    // New file without labels.
 
     while (fgets(buffer, sizeof(buffer), hackfile) != NULL) {
         if (strchr(buffer, '(') != NULL) {
@@ -45,7 +47,7 @@ void parser(FILE *asmfile, FILE *hackfile, char *hackname) {
             cycle++;
         }
         else {
-            fprintf(tempfile, "%s", buffer);
+            fprintf(clean_file, "%s", buffer);
             cycle++;
         }
     }
@@ -54,6 +56,7 @@ void parser(FILE *asmfile, FILE *hackfile, char *hackname) {
 
     while (fgets(buffer, sizeof(buffer), hackfile) != NULL) {
         if (strchr(buffer, '@') == NULL) continue;
+
         char *start = strchr(buffer, '@') + 1;
         if (*(start) >= '0' && *(start) <= '9') continue;
         if (search_label(buffer, label_number) == 0) {
@@ -64,40 +67,32 @@ void parser(FILE *asmfile, FILE *hackfile, char *hackname) {
     remove(hackname);
     rename("temp.hack", hackname);
 
-    hackfile = tempfile;
+    hackfile = clean_file;
     rewind(hackfile);
 
-    FILE *tempfile_two = fopen("temp.hack", "w+");
+    FILE *final = fopen("temp.hack", "w+");
     while (fgets(buffer, sizeof(buffer), hackfile) != NULL) {
-        int found = 0;
+        int found_label = 0;
         int found_variable = 0;
-        if (strchr(buffer, '@') != NULL) {
-            char *temp = strchr(buffer, '@') + 1;
-            while (found < label_number && str_length_compare(temp, labels[found].symbol_name) != 0) {
-                found++;
+        char *at_sign_pos = strchr(buffer, '@');
+        if (at_sign_pos != NULL) {
+            char *at_value_pos = at_sign_pos + 1;
+            // Check if the label exists and give me the index.
+            while (found_label < label_number && str_length_compare(at_value_pos, labels[found_label].symbol_name) != 0) {
+                found_label++;
             }
-            if (found < label_number) strcpy(temp, labels[found].memory_address);
+            if (found_label < label_number) strcpy(at_value_pos, labels[found_label].memory_address);
 
-            while (found_variable < variable_number && str_length_compare(temp, variables[found_variable].symbol_name) != 0) {
+            // Check if the variable exists and give me the index.
+            while (found_variable < variable_number && str_length_compare(at_value_pos, variables[found_variable].symbol_name) != 0) {
                 found_variable++;
             }
-            if (found_variable < variable_number) strcpy(temp, variables[found_variable].memory_address);
+            if (found_variable < variable_number) strcpy(at_value_pos, variables[found_variable].memory_address);
 
-            int result = atoi(strchr(buffer, '@') + 1);
-            char binary_number[16];
-            binary(result, binary_number);
-
-            // Substitute '@' with a '0'.
-            char *translation = strchr(buffer, '@');
-            *translation = '0';
-
-            // Move to next location.
-            translation++;
-            strcpy(translation, binary_number);
-            fprintf(tempfile_two, "%s\n", buffer);
+            parse_a(final, buffer, at_sign_pos);
         }
         else if (strchr(buffer, '(') == NULL) {
-            fprintf(tempfile_two, "%s", buffer);
+            fprintf(final, "%s", buffer);
         }
     }
     remove(hackname);

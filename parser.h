@@ -46,7 +46,7 @@ void remove_labels(char buffer[]) {
     }
 }
 
-// Function to add labels to their array.
+// Function to add labels to the 'labels' array.
 void add_labels(char buffer[], int *cycle, int *label_number) {
     char *start_label = strchr(buffer, '('), *end_label = strchr(buffer, ')');
 
@@ -59,7 +59,7 @@ void add_labels(char buffer[], int *cycle, int *label_number) {
 
 // Function that checks if a label already exists or not. If so, it returns 1, otherwise 0.
 int search_label(char label[], int label_number) {
-    if (label_number == 0) return 1;
+    if (label_number == 0) return 0;
 
     char *start_label = strchr(label, '@') + 1;
     int index = 0;
@@ -73,7 +73,7 @@ int search_label(char label[], int label_number) {
     return 0;
 }
 
-// Function to add a variable to variables array.
+// Function to add a variable to the 'variables' array.
 int add_variable(char variable[], int variable_number) {
     char *start_variable = strchr(variable, '@') + 1;
     int length = strlen(start_variable), index = 0;
@@ -112,22 +112,18 @@ int str_length_compare(const char *str1, const char *str2) {
     return 0;
 }
 
-void parse_a (FILE* hackfile, char buffer[], char *position) {
-    int A_instr_value = atoi(position);
+void parse_a (FILE* hackfile, char buffer[], char *at_sign) {
+    // Substitute '@' with a '0'.
+    *at_sign = '0';
+    at_sign++;
 
-    // Converting result into a binary number and putting it into the binary_number array.
+    // Convert the A-instruction into a binary number and copy it into the file.
+    int A_instr_value = atoi(at_sign);
     char binary_number[16];
     binary(A_instr_value, binary_number);
+    strcpy(at_sign, binary_number);
 
-    // Substitute '@' with a '0'.
-    char *translation = strchr(buffer, '@');
-    *translation = '0';
-
-    // Move to the next location.
-    translation++;
-    strcpy(translation, binary_number);
-
-    // Printing the modified buffer.
+    // Print the modified buffer.
     fprintf(hackfile, "%s\n", buffer);
 }
 
@@ -163,7 +159,7 @@ void parse_c (FILE* hackfile, char buffer[]) {
         comp_t = 0;
         char temp[256];
         strcpy(temp, buffer);
-        char *equal = strchr(temp, '=') +1  ;
+        char *equal = strchr(temp, '=') + 1;
         while (comp_t < 28 && strncmp(equal, comp_table[comp_t].symbol_name, strlen(temp)) != 0) {comp_t++;}
     }
     else if (jump_t < 7) {  // It means that there is a jump field.
@@ -174,6 +170,7 @@ void parse_c (FILE* hackfile, char buffer[]) {
         while (comp_t < 28 && strncmp(&temp[0], comp_table[comp_t].symbol_name, strlen(temp)) != 0) {comp_t++;}
     }
 
+    // If the searches above did return something, just copy them over into C-instruction.
     if (comp_t < 28) {
         strncpy(c_instruction + 3, comp_table[comp_t].memory_address, 7);
     }
